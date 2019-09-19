@@ -8,16 +8,17 @@ import (
 	"os"
 
 	"github.com/hauke96/kingpin"
-	//"github.com/hauke96/sigolo"
+	"github.com/hauke96/sigolo"
 )
 
 const VERSION string = "v0.0.1"
 
 var (
 	app       = kingpin.New("GPX smoother", "A simple application to smooth GPX-tracks written in go")
-	appFile   = app.Flag("file", "The .gpx file to smooth").Short('f').Required().String()
+	appFile   = app.Arg("file", "The .gpx file to smooth").Required().String()
 	appWeight = app.Flag("weight", "Specifies how strong the smoothing should happen. Larger numbers result in a more precise track, lower numbers in a smoother one. Default: 3.0").Short('w').Default("3.0").Float64()
 	appSize   = app.Flag("size", "Specifies how much surrounding point of each GPX-point should be considered. Larger numbers result in a more precise track, lower numbers in a smoother one. Default: 6").Short('s').Default("6").Int()
+	appDebug  = app.Flag("debug", "Verbose mode, showing additional debug information").Short('d').Bool()
 )
 
 func configureCliArgs() {
@@ -28,19 +29,33 @@ func configureCliArgs() {
 	app.VersionFlag.Short('v')
 }
 
+func configureLogging() {
+	if *appDebug {
+		sigolo.LogLevel = sigolo.LOG_DEBUG
+	} else {
+		sigolo.LogLevel = sigolo.LOG_INFO
+	}
+}
+
 func main() {
 	configureCliArgs()
 
 	app.Parse(os.Args[1:])
 
+	configureLogging()
+
+	sigolo.Info("Reading GPX file '%s'", *appFile)
+
 	gpxObj := readGpx(*appFile)
 
-	stepsBackwards := 6
-	weightFactor := 3.0
+	stepsBackwards := *appSize
+	weightFactor := *appWeight
 
 	newTrkpt := make([]Trkpt, len(gpxObj.Trk.Trkseg.Trkpt)-stepsBackwards)
 
 	points := gpxObj.Trk.Trkseg.Trkpt
+
+	sigolo.Info("Start smoothing")
 
 	for i := stepsBackwards / 2; i < len(points)-stepsBackwards/2; i++ {
 		latSum := 0.0
@@ -62,62 +77,50 @@ func main() {
 		}
 	}
 
+	sigolo.Info("Finished smoothing")
+
 	newGpx := gpx{}
 	newGpx.Xmlns = gpxObj.Xmlns
 	newGpx.Version = gpxObj.Version
 	newGpx.Trk.Name = gpxObj.Trk.Name
 	newGpx.Trk.Trkseg.Trkpt = newTrkpt
 
-	writeGpx("out.gpx", &newGpx)
+	writeGpx(fmt.Sprintf("out_w%f-s%d.gpx", *appWeight, *appSize), &newGpx)
 }
 
 func readGpx(fileName string) *gpx {
 	// Open xmlFile
 	xmlFile, err := os.Open(fileName)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	sigolo.FatalCheck(err)
 
-	fmt.Println("Successfully Opened", fileName)
+	sigolo.Debug("Successfully opened '%s'", fileName)
 	defer xmlFile.Close()
 
 	byteValue, err := ioutil.ReadAll(xmlFile)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	sigolo.FatalCheck(err)
 
 	gpxObj := gpx{}
 
 	err = xml.Unmarshal(byteValue, &gpxObj)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	sigolo.FatalCheck(err)
+
+	sigolo.Debug("Successfully read outputinput GPX-file '%s'", fileName)
 
 	return &gpxObj
 }
 
 func writeGpx(fileName string, gpxObj *gpx) {
 	xmlFile, err := os.Create(fileName)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	sigolo.FatalCheck(err)
 
-	fmt.Println("Successfully Opened", fileName)
+	sigolo.Debug("Successfully opened '%s'", fileName)
 	defer xmlFile.Close()
 
 	byteValue, err := xml.MarshalIndent(gpxObj, "", "\t")
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	sigolo.FatalCheck(err)
 
 	ioutil.WriteFile(fileName, byteValue, 0644)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	sigolo.FatalCheck(err)
+
+	sigolo.Info("Successfully written output GPX-file '%s'", fileName)
 }
