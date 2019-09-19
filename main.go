@@ -6,10 +6,34 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
+
+	"github.com/hauke96/kingpin"
+	//"github.com/hauke96/sigolo"
 )
 
+const VERSION string = "v0.0.1"
+
+var (
+	app       = kingpin.New("GPX smoother", "A simple application to smooth GPX-tracks written in go")
+	appFile   = app.Flag("file", "The .gpx file to smooth").Short('f').Required().String()
+	appWeight = app.Flag("weight", "Specifies how strong the smoothing should happen. Larger numbers result in a more precise track, lower numbers in a smoother one. Default: 3.0").Short('w').Default("3.0").Float64()
+	appSize   = app.Flag("size", "Specifies how much surrounding point of each GPX-point should be considered. Larger numbers result in a more precise track, lower numbers in a smoother one. Default: 6").Short('s').Default("6").Int()
+)
+
+func configureCliArgs() {
+	app.Author("Hauke Stieler")
+	app.Version(VERSION)
+
+	app.HelpFlag.Short('h')
+	app.VersionFlag.Short('v')
+}
+
 func main() {
-	gpxObj := readGpx("test.gpx")
+	configureCliArgs()
+
+	app.Parse(os.Args[1:])
+
+	gpxObj := readGpx(*appFile)
 
 	stepsBackwards := 6
 	weightFactor := 3.0
@@ -44,7 +68,7 @@ func main() {
 	newGpx.Trk.Name = gpxObj.Trk.Name
 	newGpx.Trk.Trkseg.Trkpt = newTrkpt
 
-	writeGpx("test.new.gpx", &newGpx)
+	writeGpx("out.gpx", &newGpx)
 }
 
 func readGpx(fileName string) *gpx {
