@@ -72,8 +72,10 @@ func main() {
 
 		// math.Pow(stepsBackwards+1,2) : The amount of weighted points we need to divide by to get the average
 		newTrkpt[i-stepsBackwards/2] = Trkpt{
-			Lat: latSum / weightSum,
-			Lon: lonSum / weightSum,
+			Lat:  latSum / weightSum,
+			Lon:  lonSum / weightSum,
+			Ele:  points[i].Ele,
+			Time: points[i].Time,
 		}
 	}
 
