@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/xml"
-	"fmt"
 	"io/ioutil"
 	"math"
 	"os"
@@ -16,6 +15,7 @@ const VERSION string = "v0.0.1"
 var (
 	app       = kingpin.New("GPX smoother", "A simple application to smooth GPX-tracks written in go")
 	appFile   = app.Arg("file", "The .gpx file to smooth").Required().String()
+	appOutput = app.Flag("output", "The output file").Short('o').Default("out.gpx").String()
 	appWeight = app.Flag("weight", "Specifies how strong the smoothing should happen. Larger numbers result in a more precise track, lower numbers in a smoother one. Default: 3.0").Short('w').Default("3.0").Float64()
 	appSize   = app.Flag("size", "Specifies how much surrounding point of each GPX-point should be considered. Larger numbers result in a more precise track, lower numbers in a smoother one. Default: 6").Short('s').Default("6").Int()
 	appDebug  = app.Flag("debug", "Verbose mode, showing additional debug information").Short('d').Bool()
@@ -87,7 +87,7 @@ func main() {
 	newGpx.Trk.Name = gpxObj.Trk.Name
 	newGpx.Trk.Trkseg.Trkpt = newTrkpt
 
-	writeGpx(fmt.Sprintf("out_w%f-s%d.gpx", *appWeight, *appSize), &newGpx)
+	writeGpx(*appOutput, &newGpx)
 }
 
 func readGpx(fileName string) *gpx {
